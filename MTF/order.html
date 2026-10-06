@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深上奶茶 · 确认订单</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="order-page">
+    <main class="app-shell">
+        <header class="topbar">
+            <div class="logo">
+                <div class="logo-badge">单</div>
+                <div>
+                    <h1 class="page-title">确认订单</h1>
+                    <p class="subtitle">检查饮品数量，补充联系方式</p>
+                </div>
+            </div>
+            <div class="user-area">
+                <span class="username-pill" id="username-pill"></span>
+                <button class="ghost-btn" id="btn-back">返回点单</button>
+            </div>
+        </header>
+
+        <section class="order-layout">
+            <div class="order-panel">
+                <h2 class="panel-title">订单明细</h2>
+                <div class="order-list" id="order-list"></div>
+            </div>
+
+            <aside class="summary-panel">
+                <h2 class="panel-title">配送信息</h2>
+
+                <label class="field" for="txt-tel">
+                    联系电话
+                    <input type="tel" id="txt-tel" placeholder="请输入手机号">
+                </label>
+
+                <label class="field" for="txt-note">
+                    备注
+                    <textarea id="txt-note" placeholder="少冰、半糖、打包等需求"></textarea>
+                </label>
+
+                <div class="summary-line">
+                    <span>饮品数量</span>
+                    <b id="total-count">0 杯</b>
+                </div>
+                <div class="summary-line">
+                    <span>应付合计</span>
+                    <strong id="total-price">¥0.00</strong>
+                </div>
+
+                <div class="form-actions">
+                    <button class="primary-btn" id="btn-submit">提交订单</button>
+                    <button class="danger-btn" id="btn-clear">清空订单</button>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        const username = localStorage.getItem("username");
+        const username_pill = document.querySelector("#username-pill");
+        const order_list = document.querySelector("#order-list");
+        const txt_tel = document.querySelector("#txt-tel");
+        const txt_note = document.querySelector("#txt-note");
+        const total_count = document.querySelector("#total-count");
+        const total_price = document.querySelector("#total-price");
+        const btn_submit = document.querySelector("#btn-submit");
+        const btn_clear = document.querySelector("#btn-clear");
+        const btn_back = document.querySelector("#btn-back");
+        let cart = [];
+
+        if (!username) {
+            location.href = "login.html";
+        } else {
+            username_pill.textContent = "下单用户：" + username;
+        }
+
+        try {
+            cart = JSON.parse(localStorage.getItem("cart") || "[]");
+            if (!Array.isArray(cart)) {
+                cart = [];
+            }
+        } catch (error) {
+            cart = [];
+            localStorage.removeItem("cart");
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function renderOrder() {
+            if (cart.length === 0) {
+                order_list.innerHTML = `<div class="empty-state">订单为空，请返回选择饮品</div>`;
+                total_count.textContent = "0 杯";
+                total_price.textContent = "¥0.00";
+                btn_submit.disabled = true;
+                btn_clear.disabled = true;
+                return;
+            }
+
+            btn_submit.disabled = false;
+            btn_clear.disabled = false;
+
+            order_list.innerHTML = cart.map(item => `
+                <div class="order-item">
+                    <div>
+                        <h4>${escapeHtml(item.mname)}</h4>
+                        <p>¥${Number(item.price).toFixed(2)} × ${item.count}</p>
+                    </div>
+                    <strong>¥${(Number(item.price) * item.count).toFixed(2)}</strong>
+                </div>
+            `).join("");
+
+            const count = cart.reduce((sum, item) => sum + item.count, 0);
+            const price = cart.reduce((sum, item) => sum + Number(item.price) * item.count, 0);
+            total_count.textContent = count + " 杯";
+            total_price.textContent = "¥" + price.toFixed(2);
+        }
+
+        btn_back.onclick = function () {
+            location.href = "main.html";
+        };
+
+        btn_clear.onclick = function () {
+            if (cart.length === 0) {
+                location.href = "main.html";
+                return;
+            }
+
+            if (confirm("确定清空当前订单吗？")) {
+                localStorage.removeItem("cart");
+                location.href = "main.html";
+            }
+        };
+
+        btn_submit.onclick = function () {
+            if (cart.length === 0) {
+                alert("订单为空，请先选择饮品");
+                location.href = "main.html";
+                return;
+            }
+
+            if (!txt_tel.value.trim()) {
+                alert("请填写联系电话");
+                return;
+            }
+
+            const note = txt_note.value.trim();
+            localStorage.removeItem("cart");
+            alert("下单成功！" + (note ? "备注：" + note : ""));
+            location.href = "main.html";
+        };
+
+        renderOrder();
+    </script>
+</body>
+</html>

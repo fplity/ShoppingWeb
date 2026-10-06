@@ -1,0 +1,30 @@
+# Local database settings and credentials
+**/db.properties
+.env
+.env.*
+!.env.example
+*.local.*
+*.pem
+*.key
+
+# Compiled output and temporary checks
+*.class
+**/classes/
+**/out/
+**/target/
+**/build/
+.publish-check/
+*.log
+*.war
+*.zip
+
+# Keep only portable IDEA module/library configuration
+**/.idea/*
+!**/.idea/modules.xml
+!**/.idea/libraries/
+!**/.idea/libraries/*.xml
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini

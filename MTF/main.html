@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深上奶茶 · 点单</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="shop-page">
+    <main class="app-shell">
+        <header class="topbar">
+            <div class="logo">
+                <div class="logo-badge">深</div>
+                <div>
+                    <h1 class="page-title">深上奶茶</h1>
+                    <p class="subtitle">今日招牌 · 现点现做</p>
+                </div>
+            </div>
+            <div class="user-area">
+                <span class="username-pill" id="username-pill"></span>
+                <button class="ghost-btn" id="btn-logout">退出登录</button>
+            </div>
+        </header>
+
+        <section class="hero-strip">
+            <div class="feature-panel">
+                <div>
+                    <p class="eyebrow">MILK TEA HOUSE</p>
+                    <h2>把喜欢的饮品放进购物车</h2>
+                    <p>浏览招牌推荐，搜索想喝的口味，确认数量后即可进入订单确认页。</p>
+                </div>
+                <img class="feature-image" src="image/zz.png" alt="招牌奶茶">
+            </div>
+
+            <aside class="cart-panel">
+                <h2 class="panel-title">购物车</h2>
+                <div class="cart-list" id="cart-list"></div>
+                <div class="cart-total">
+                    <span>合计</span>
+                    <strong id="cart-total">¥0.00</strong>
+                </div>
+                <div class="cart-actions">
+                    <button class="ghost-btn" id="btn-clear-cart">清空</button>
+                    <button class="secondary-btn" id="btn-checkout">去结算</button>
+                </div>
+            </aside>
+        </section>
+
+        <section>
+            <div class="toolbar">
+                <div>
+                    <h2 class="panel-title">招牌推荐</h2>
+                    <p class="subtitle">共 <span id="product-count">0</span> 款饮品</p>
+                </div>
+                <label class="search-box" for="search-input">
+                    <span>搜索</span>
+                    <input type="text" id="search-input" placeholder="输入奶茶名称">
+                </label>
+            </div>
+            <div class="product-grid" id="product-grid">
+                <div class="loading-state">正在加载饮品...</div>
+            </div>
+        </section>
+    </main>
+
+    <script src="axios.js"></script>
+    <script>
+        const username = localStorage.getItem("username");
+        const username_pill = document.querySelector("#username-pill");
+        const btn_logout = document.querySelector("#btn-logout");
+        const search_input = document.querySelector("#search-input");
+        const product_grid = document.querySelector("#product-grid");
+        const product_count = document.querySelector("#product-count");
+        const cart_list = document.querySelector("#cart-list");
+        const cart_total = document.querySelector("#cart-total");
+        const btn_clear_cart = document.querySelector("#btn-clear-cart");
+        const btn_checkout = document.querySelector("#btn-checkout");
+
+        let allData = [];
+        let cart = [];
+
+        if (!username) {
+            location.href = "login.html";
+        } else {
+            username_pill.textContent = "欢迎，" + username;
+        }
+
+        try {
+            cart = JSON.parse(localStorage.getItem("cart") || "[]");
+            if (!Array.isArray(cart)) {
+                cart = [];
+            }
+        } catch (error) {
+            cart = [];
+            localStorage.removeItem("cart");
+        }
+
+        btn_logout.onclick = function () {
+            localStorage.removeItem("username");
+            localStorage.removeItem("cart");
+            location.href = "login.html";
+        };
+
+        async function getAll() {
+            try {
+                const resp = await axios.get("http://127.0.0.1:8080/webapp/milkTea", {
+                    params: {
+                        op: "getAll"
+                    }
+                });
+
+                allData = Array.isArray(resp.data) ? resp.data : [];
+                renderProducts(allData);
+            } catch (error) {
+                product_grid.innerHTML = `<div class="empty-state">饮品加载失败，请确认后端服务已启动</div>`;
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function imagePath(image) {
+            return "image/" + encodeURIComponent(String(image || ""));
+        }
+
+        function renderProducts(arr) {
+            product_count.textContent = arr.length;
+
+            if (!arr || arr.length === 0) {
+                product_grid.innerHTML = `<div class="empty-state">没有找到相关饮品</div>`;
+                return;
+            }
+
+            product_grid.innerHTML = arr.map(item => `
+                <article class="product-card">
+                    <div class="product-image">
+                        <img src="${imagePath(item.image)}" alt="${escapeHtml(item.mname)}">
+                    </div>
+                    <h3 class="product-name">${escapeHtml(item.mname)}</h3>
+                    <div class="product-meta">
+                        <span class="product-id">编号 ${escapeHtml(item.mid)}</span>
+                        <span class="product-price">¥${Number(item.price).toFixed(2)}</span>
+                    </div>
+                    <button class="mini-btn" data-mid="${escapeHtml(item.mid)}">加入购物车</button>
+                </article>
+            `).join("");
+        }
+
+        function addCart(mid) {
+            const product = allData.find(item => String(item.mid) === String(mid));
+            if (!product) {
+                return;
+            }
+
+            const item = cart.find(row => String(row.mid) === String(mid));
+            if (item) {
+                item.count += 1;
+            } else {
+                cart.push({
+                    mid: product.mid,
+                    mname: product.mname,
+                    price: Number(product.price),
+                    image: product.image,
+                    count: 1
+                });
+            }
+
+            saveCart();
+        }
+
+        function changeCount(mid, step) {
+            const item = cart.find(row => String(row.mid) === String(mid));
+            if (!item) {
+                return;
+            }
+
+            item.count += step;
+            if (item.count <= 0) {
+                cart = cart.filter(row => String(row.mid) !== String(mid));
+            }
+
+            saveCart();
+        }
+
+        function saveCart() {
+            localStorage.setItem("cart", JSON.stringify(cart));
+            renderCart();
+        }
+
+        function renderCart() {
+            if (cart.length === 0) {
+                cart_list.innerHTML = `<div class="empty-state">购物车还是空的</div>`;
+                cart_total.textContent = "¥0.00";
+                btn_checkout.disabled = true;
+                btn_clear_cart.disabled = true;
+                return;
+            }
+
+            btn_checkout.disabled = false;
+            btn_clear_cart.disabled = false;
+
+            cart_list.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div>
+                        <h4>${escapeHtml(item.mname)}</h4>
+                        <p>¥${Number(item.price).toFixed(2)} / 杯</p>
+                    </div>
+                    <div class="qty-control">
+                        <button class="qty-btn" data-mid="${escapeHtml(item.mid)}" data-step="-1">-</button>
+                        <span>${item.count}</span>
+                        <button class="qty-btn" data-mid="${escapeHtml(item.mid)}" data-step="1">+</button>
+                    </div>
+                </div>
+            `).join("");
+
+            const total = cart.reduce((sum, item) => sum + Number(item.price) * item.count, 0);
+            cart_total.textContent = "¥" + total.toFixed(2);
+        }
+
+        search_input.oninput = function () {
+            const keyword = this.value.trim();
+            const list = allData.filter(item => item.mname.includes(keyword));
+            renderProducts(list);
+        };
+
+        product_grid.onclick = function (event) {
+            const button = event.target.closest(".mini-btn");
+            if (button) {
+                addCart(button.dataset.mid);
+            }
+        };
+
+        cart_list.onclick = function (event) {
+            const button = event.target.closest(".qty-btn");
+            if (button) {
+                changeCount(button.dataset.mid, Number(button.dataset.step));
+            }
+        };
+
+        btn_clear_cart.onclick = function () {
+            if (cart.length === 0) {
+                return;
+            }
+
+            if (confirm("确定清空购物车吗？")) {
+                cart = [];
+                saveCart();
+            }
+        };
+
+        btn_checkout.onclick = function () {
+            if (cart.length === 0) {
+                alert("请先选择饮品");
+                return;
+            }
+
+            location.href = "order.html";
+        };
+
+        renderCart();
+        getAll();
+    </script>
+</body>
+</html>

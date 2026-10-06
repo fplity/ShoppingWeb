@@ -1,0 +1,4 @@
+# Copy to db.properties and enter your own local settings.
+db.url=jdbc:mysql://localhost:3306/mt
+db.username=root
+db.password=YOUR_LOCAL_DATABASE_PASSWORD

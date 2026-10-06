@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深上奶茶 · 登录</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+    <main class="auth-shell">
+        <section class="brand-panel">
+            <div class="brand-mark">SHENSHANG</div>
+            <div>
+                <h1>深上奶茶</h1>
+                <p>把招牌奶茶、购物车和下单流程连成一个完整体验。</p>
+            </div>
+        </section>
+
+        <section class="auth-card">
+            <p class="eyebrow">WELCOME BACK</p>
+            <h2>登录账号</h2>
+
+            <label class="field" for="txt-username">
+                用户名
+                <input type="text" id="txt-username" placeholder="请输入用户名" autocomplete="username">
+            </label>
+
+            <label class="field" for="txt-password">
+                密码
+                <input type="password" id="txt-password" placeholder="请输入密码" autocomplete="current-password">
+            </label>
+
+            <button class="primary-btn" id="btn-login">登录</button>
+
+            <div class="auth-link">
+                没有账号？<a href="regist.html">立即注册</a>
+            </div>
+        </section>
+    </main>
+
+    <script src="axios.js"></script>
+    <script>
+        const txt_username = document.querySelector("#txt-username");
+        const txt_password = document.querySelector("#txt-password");
+        const btn_login = document.querySelector("#btn-login");
+
+        if (localStorage.getItem("username")) {
+            location.href = "main.html";
+        }
+
+        btn_login.onclick = async function () {
+            const username = txt_username.value.trim();
+            const password = txt_password.value.trim();
+
+            if (!username || !password) {
+                alert("请输入用户名和密码");
+                return;
+            }
+
+            try {
+                const resp = await axios.get("http://127.0.0.1:8080/webapp/user", {
+                    params: {
+                        op: "login",
+                        username: username,
+                        password: password
+                    }
+                });
+
+                if (resp.data == true) {
+                    localStorage.setItem("username", username);
+                    location.href = "main.html";
+                } else {
+                    alert("账号或密码有误");
+                }
+            } catch (error) {
+                alert("登录失败，请确认后端服务已启动");
+            }
+        };
+    </script>
+</body>
+</html>
